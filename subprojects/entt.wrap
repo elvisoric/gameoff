@@ -1,0 +1,4 @@
+[wrap-git]
+directory = entt
+url = https://github.com/elvisoric/entt.git
+revision = meson
