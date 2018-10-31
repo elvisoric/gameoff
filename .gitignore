@@ -1,1 +1,4 @@
 build/
+.vscode/
+subprojects/
+!subprojects/*.wrap
