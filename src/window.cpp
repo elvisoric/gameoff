@@ -1,3 +1,5 @@
+#include <glad/glad.h>
+
 #include <window.h>
 #include <string>
 
@@ -19,6 +21,12 @@ GLFWwindow* createWindow(float width, float height, const std::string& title) {
     throw "Failed to create glfw window ";
   }
   glfwMakeContextCurrent(window);
+
+  // initialize glad before any opengl call
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    throw "Failed to initialize GLAD";
+  }
+
   return window;
 }
 
