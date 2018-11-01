@@ -41,6 +41,7 @@ Window::~Window() { glfwDestroyWindow(window_); }
 
 Window createWindow(float width, float height) {
   auto windowPtr = ::createWindow(width, height, "GameOff");
+  glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
   return Window{windowPtr, width, height};
 }
 
