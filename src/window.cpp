@@ -42,6 +42,7 @@ Window::~Window() { glfwDestroyWindow(window_); }
 Window createWindow(float width, float height) {
   auto windowPtr = ::createWindow(width, height, "GameOff");
   glViewport(0, 0, width, height);
+  glEnable(GL_DEPTH_TEST);
   return Window{windowPtr, width, height};
 }
 

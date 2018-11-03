@@ -12,7 +12,18 @@ class BasicShader : public Program {
   }
   ~BasicShader() = default;
 
-  void getAllUniformLocations() override {}
+  inline void loadModel(const glm::mat4& model) const {
+    loadUniform(modelLocation_, model);
+  }
+
+  inline void loadProjection(const glm::mat4& proj) const {
+    loadUniform(projectionLocation_, proj);
+  }
+
+  void getAllUniformLocations() override {
+    modelLocation_ = getUniformLocation("model");
+    projectionLocation_ = getUniformLocation("projection");
+  }
 
  protected:
   void bindAttributes() override {
@@ -22,6 +33,8 @@ class BasicShader : public Program {
   }
 
  private:
+  unsigned int modelLocation_;
+  unsigned int projectionLocation_;
 };
 }  // namespace shader
 }  // namespace jam
