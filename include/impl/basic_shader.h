@@ -7,7 +7,9 @@ namespace jam {
 namespace shader {
 class BasicShader : public Program {
  public:
-  BasicShader() : Program{"shaders/basic.vs", "shaders/basic.fs"} {}
+  BasicShader() : Program{"shaders/basic.vs", "shaders/basic.fs"} {
+    bindAttributes();
+  }
   ~BasicShader() = default;
 
   void getAllUniformLocations() override {}
