@@ -36,24 +36,9 @@ void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
 
 }  // namespace jam
 
-int main() {
-  auto window = jam::createWindow(1024.0f, 768.0f);
-
-  jam::shader::BasicShader shader;
-  jam::Renderer renderer;
-  jam::Loader loader;
-
+namespace {
+void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
-
-  glm::mat4 trans{1.0f};
-  trans = glm::translate(
-      trans, glm::vec3{window.width() / 2, window.height() / 2, 0.0f});
-  trans = glm::scale(trans, glm::vec3{50.0f});
-
-  glm::mat4 projection =
-      glm::ortho(0.0f, window.width(), window.height(), 0.0f, -1.0f, 1.0f);
-
-  jam::registry reg;
   auto entity1 = reg.create();
   reg.assign<jam::component::Position>(entity1, window.width() / 2,
                                        window.height() / 2, 0.0f);
@@ -68,6 +53,26 @@ int main() {
   reg.assign<jam::component::Position>(entity3, 100.0f, 2 * window.height() / 3,
                                        0.0f);
   reg.assign<jam::component::Renderable>(entity3, model);
+}
+}  // namespace
+
+int main() {
+  auto window = jam::createWindow(1024.0f, 768.0f);
+
+  jam::shader::BasicShader shader;
+  jam::Renderer renderer;
+  jam::Loader loader;
+
+  glm::mat4 trans{1.0f};
+  trans = glm::translate(
+      trans, glm::vec3{window.width() / 2, window.height() / 2, 0.0f});
+  trans = glm::scale(trans, glm::vec3{50.0f});
+
+  glm::mat4 projection =
+      glm::ortho(0.0f, window.width(), window.height(), 0.0f, -1.0f, 1.0f);
+
+  jam::registry reg;
+  prepare(window, reg, loader);
 
   while (!window.shouldClose()) {
     renderer.newFrame();
