@@ -4,10 +4,12 @@
 #include <core/renderer.h>
 #include <impl/basic_shader.h>
 #include <window.h>
+#include <chrono>
 #include <entt.hpp>
 #include <factory.hpp>
 #include <helper.hpp>
 #include <iostream>
+#include <thread>
 
 #include <components/collision.hpp>
 #include <components/position.hpp>
@@ -15,6 +17,8 @@
 #include <components/velocity.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
+
+using namespace std::chrono_literals;
 
 namespace jam {
 using registry = entt::registry<uint32_t>;
@@ -48,23 +52,23 @@ void move(registry& reg) {
 
 void collision(registry& reg, Window& window) {
   using namespace jam::component;
-  // TODO: 15.0f is half of scale value. Need to improve this code to use scale
+  // TODO: 30.0f is scale value. Need to improve this code to use scale
   // value instead of hard coded value.
-  const auto scaleFactorHalf = 15.0f;
+  const auto scaleFactor = 30.0f;
   reg.view<Position, Velocity, Collision>().each(
       [&](auto entity, Position& pos, Velocity& vel, Collision&) {
-        if (pos.x - scaleFactorHalf <= 0.0f) {
-          pos.x = 0.0f + scaleFactorHalf;
+        if (pos.x - scaleFactor <= 0.0f) {
+          pos.x = 0.0f + scaleFactor;
           vel.dvec.x *= -1;
-        } else if (pos.x + scaleFactorHalf >= window.width()) {
-          pos.x = window.width() - scaleFactorHalf;
+        } else if (pos.x + scaleFactor >= window.width()) {
+          pos.x = window.width() - scaleFactor;
           vel.dvec.x *= -1;
         }
-        if (pos.y - scaleFactorHalf <= 0.0f) {
-          pos.y = 0.0f + scaleFactorHalf;
+        if (pos.y - scaleFactor <= 0.0f) {
+          pos.y = 0.0f + scaleFactor;
           vel.dvec.y *= -1;
-        } else if (pos.y + scaleFactorHalf >= window.height()) {
-          pos.y = window.height() - scaleFactorHalf;
+        } else if (pos.y + scaleFactor >= window.height()) {
+          pos.y = window.height() - scaleFactor;
           vel.dvec.y *= -1;
         }
       });
@@ -79,12 +83,13 @@ void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
   reg.assign<jam::component::Position>(entity1, window.width() / 2,
                                        window.height() / 2, 0.0f);
   reg.assign<jam::component::Renderable>(entity1, model);
-  reg.assign<jam::component::Velocity>(entity1, glm::vec3{0.7f, 0.6f, 0.0f});
+  reg.assign<jam::component::Velocity>(entity1, glm::vec3{3.0f, -4.0f, 0.0f});
   reg.assign<jam::component::Collision>(entity1);
 }
 }  // namespace
 
 int main() {
+  using clock = std::chrono::high_resolution_clock;
   auto window = jam::createWindow(1024.0f, 768.0f);
 
   jam::shader::BasicShader shader;
@@ -97,7 +102,9 @@ int main() {
   jam::registry reg;
   prepare(window, reg, loader);
 
+  std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 70;
   while (!window.shouldClose()) {
+    auto start = clock::now();
     renderer.newFrame();
     jam::move(reg);
     jam::collision(reg, window);
@@ -106,6 +113,14 @@ int main() {
     window.pollEvents();
     window.swapBuffers();
     jam::mojave_fix(window);
+    auto end = clock::now();
+
+    std::chrono::nanoseconds sleepTime = end - start + perFrame;
+    if (sleepTime > 0ns) {
+      std::this_thread::sleep_for(sleepTime);
+    } else {
+      std::cout << "need to catch up here..." << std::endl;
+    }
   }
   return 0;
 }
