@@ -1,12 +1,12 @@
 #ifndef JAM_COMPONENTS_POSITION_HPP
 #define JAM_COMPONENTS_POSITION_HPP
+
+#include <glm/glm.hpp>
 namespace jam {
 namespace component {
 
 struct Position {
-  float x = 0.0f;
-  float y = 0.0f;
-  float z = 0.0f;
+  glm::vec3 p;
 };
 
 }  // namespace component

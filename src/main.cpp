@@ -40,7 +40,7 @@ void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
   reg.view<Renderable, Position>().each(
       [&](auto entity, Renderable& rend, Position& pos) {
         glm::mat4 trans{1.0f};
-        trans = glm::translate(trans, glm::vec3{pos.x, pos.y, pos.z});
+        trans = glm::translate(trans, pos.p);
         trans = glm::scale(trans, glm::vec3{rend.scaleX, rend.scaleY, 0.0f});
         shader.loadModel(trans);
         renderer.render(rend.model);
@@ -52,29 +52,25 @@ void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
 void move(registry& reg) {
   using namespace jam::component;
   reg.view<Position, Velocity>().each(
-      [&](auto entity, Position& pos, Velocity& vel) {
-        pos.x += vel.dvec.x;
-        pos.y += vel.dvec.y;
-        pos.z += vel.dvec.z;
-      });
+      [&](auto entity, Position& pos, Velocity& vel) { pos.p += vel.dvec; });
 }
 
 void collision(registry& reg, Window& window) {
   using namespace jam::component;
   reg.view<Position, Velocity, Collision>().each(
       [&](auto entity, Position& pos, Velocity& vel, Collision& col) {
-        if (pos.x - col.width <= 0.0f) {
-          pos.x = col.width;
+        if (pos.p.x - col.width <= 0.0f) {
+          pos.p.x = col.width;
           vel.dvec.x *= -1;
-        } else if (pos.x + col.width >= window.width()) {
-          pos.x = window.width() - col.width;
+        } else if (pos.p.x + col.width >= window.width()) {
+          pos.p.x = window.width() - col.width;
           vel.dvec.x *= -1;
         }
-        if (pos.y - col.height <= 0.0f) {
-          pos.y = col.height;
+        if (pos.p.y - col.height <= 0.0f) {
+          pos.p.y = col.height;
           vel.dvec.y *= -1;
-        } else if (pos.y + col.height >= window.height()) {
-          pos.y = window.height() - col.height;
+        } else if (pos.p.y + col.height >= window.height()) {
+          pos.p.y = window.height() - col.height;
           vel.dvec.y *= -1;
         }
       });
@@ -90,8 +86,8 @@ void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
   auto entity1 = reg.create();
   float width = r();
   float height = r();
-  reg.assign<jam::component::Position>(entity1, window.width() / 2,
-                                       window.height() / 2, 0.0f);
+  reg.assign<jam::component::Position>(
+      entity1, glm::vec3{window.width() / 2, window.height() / 2, 0.0f});
   reg.assign<jam::component::Renderable>(entity1, model, width, height);
   reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), rv(), 0.0f});
   reg.assign<jam::component::Collision>(entity1, width, height);
