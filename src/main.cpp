@@ -17,11 +17,20 @@
 #include <components/velocity.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <random>
 
 using namespace std::chrono_literals;
 
 namespace jam {
 using registry = entt::registry<uint32_t>;
+
+struct Random {
+  Random(float from, float to) : mt{rd()}, dist{from, to} {}
+  float operator()() { return dist(mt); }
+  std::random_device rd;
+  std::mt19937 mt;
+  std::uniform_real_distribution<float> dist;
+};
 
 void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
             glm::mat4& projection) {
@@ -76,13 +85,15 @@ void collision(registry& reg, Window& window) {
 namespace {
 void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
+  jam::Random r{2.0f, 50.0f};
+  jam::Random rv{2.0f, 8.0f};
   auto entity1 = reg.create();
-  float width = 10.0f;
-  float height = 30.0f;
+  float width = r();
+  float height = r();
   reg.assign<jam::component::Position>(entity1, window.width() / 2,
                                        window.height() / 2, 0.0f);
   reg.assign<jam::component::Renderable>(entity1, model, width, height);
-  reg.assign<jam::component::Velocity>(entity1, glm::vec3{3.0f, -4.0f, 0.0f});
+  reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), rv(), 0.0f});
   reg.assign<jam::component::Collision>(entity1, width, height);
 }
 }  // namespace
