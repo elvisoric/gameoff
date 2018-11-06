@@ -11,6 +11,7 @@
 #include <iostream>
 #include <thread>
 
+#include <components/acceleration.hpp>
 #include <components/collision.hpp>
 #include <components/position.hpp>
 #include <components/renderable.hpp>
@@ -49,6 +50,13 @@ void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
   shader.stop();
 }
 
+void acceleration(registry& reg) {
+  using namespace jam::component;
+  reg.view<Velocity, Acceleration>().each(
+      [&](auto entity, Velocity& vel, Acceleration& acc) {
+        vel.dvec += acc.vec;
+      });
+}
 void move(registry& reg) {
   using namespace jam::component;
   reg.view<Position, Velocity>().each(
@@ -71,7 +79,9 @@ void collision(registry& reg, Window& window) {
           vel.dvec.y *= -1;
         } else if (pos.p.y + col.height >= window.height()) {
           pos.p.y = window.height() - col.height;
-          vel.dvec.y *= -1;
+          vel.dvec.x = 0.0f;
+          vel.dvec.y = 0.0f;
+          // vel.dvec.y *= -1;
         }
       });
 }
@@ -82,15 +92,19 @@ namespace {
 void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
   jam::Random r{2.0f, 50.0f};
-  jam::Random rv{2.0f, 8.0f};
-  auto entity1 = reg.create();
-  float width = r();
-  float height = r();
-  reg.assign<jam::component::Position>(
-      entity1, glm::vec3{window.width() / 2, window.height() / 2, 0.0f});
-  reg.assign<jam::component::Renderable>(entity1, model, width, height);
-  reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), rv(), 0.0f});
-  reg.assign<jam::component::Collision>(entity1, width, height);
+  jam::Random rv{-8.0f, 8.0f};
+  for (int i = 0; i < 100; ++i) {
+    auto entity1 = reg.create();
+    float width = r();
+    float height = r();
+    reg.assign<jam::component::Position>(
+        entity1, glm::vec3{window.width() / 2, window.height() / 2, 0.0f});
+    reg.assign<jam::component::Renderable>(entity1, model, width, height);
+    reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), -rv(), 0.0f});
+    reg.assign<jam::component::Acceleration>(entity1,
+                                             glm::vec3{0.0f, 0.13f, 0.0f});
+    reg.assign<jam::component::Collision>(entity1, width, height);
+  }
 }
 }  // namespace
 
@@ -112,6 +126,7 @@ int main() {
   while (!window.shouldClose()) {
     auto start = clock::now();
     renderer.newFrame();
+    jam::acceleration(reg);
     jam::move(reg);
     jam::collision(reg, window);
     jam::render(reg, renderer, shader, projection);
