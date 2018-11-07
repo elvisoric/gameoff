@@ -72,6 +72,7 @@ void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
         trans = glm::translate(trans, pos.p);
         trans = glm::scale(trans, glm::vec3{rend.scaleX, rend.scaleY, 0.0f});
         shader.loadModel(trans);
+        shader.color(rend.color);
         renderer.render(rend.model);
       });
 
@@ -96,38 +97,39 @@ void move(registry& reg) {
 
 void collision(registry& reg, Window& window) {
   using namespace jam::component;
-  reg.view<Position, Velocity, Collision>().each(
-      [&](auto entity, Position& pos, Velocity& vel, Collision& col) {
-        if (pos.p.x - col.width <= 0.0f) {
-          pos.p.x = col.width;
-          vel.dvec.x *= -1;
-        } else if (pos.p.x + col.width >= window.width()) {
-          pos.p.x = window.width() - col.width;
-          vel.dvec.x *= -1;
-        }
-        if (pos.p.y - col.height <= 0.0f) {
-          pos.p.y = col.height;
-          vel.dvec.y *= -1;
-        } else if (pos.p.y + col.height >= window.height()) {
-          pos.p.y = window.height() - col.height;
-          vel.dvec.x = 0.0f;
-          vel.dvec.y = 0.0f;
-          // vel.dvec.y *= -1;
-        }
+  reg.view<Position, Velocity, Collision>().each([&](auto entity, Position& pos,
+                                                     Velocity& vel,
+                                                     Collision& col) {
+    if (pos.p.x - col.width <= 0.0f) {
+      pos.p.x = col.width;
+      vel.dvec.x *= -1;
+    } else if (pos.p.x + col.width >= window.width()) {
+      pos.p.x = window.width() - col.width;
+      vel.dvec.x *= -1;
+    }
+    if (pos.p.y - col.height <= 0.0f) {
+      pos.p.y = col.height;
+      vel.dvec.y *= -1;
+    } else if (pos.p.y + col.height >= window.height()) {
+      pos.p.y = window.height() - col.height;
+      vel.dvec.x = 0.0f;
+      vel.dvec.y = 0.0f;
+    }
 
-        if (pointInRect(window.width() / 2, window.height(), pos, col)) {
-          std::cout << "point in Rect " << std::endl;
-        }
-        reg.view<Position, Collision>().each(
-            [&](auto e, Position& p, Collision& c) {
-              Rect r1{p.p.x, p.p.y, c.width, c.height};
-              Rect r2{pos.p.x, pos.p.y, col.width, col.height};
-              if (e != entity)
-                if (collide(r1, r2)) {
-                  std::cout << "collideeee" << std::endl;
-                }
-            });
-      });
+    reg.view<Position, Collision, Renderable>().each(
+        [&](auto e, Position& p, Collision& c, Renderable& r) {
+          Rect r1{p.p.x - c.width / 2, p.p.y - c.height / 2, c.width, c.height};
+          Rect r2{pos.p.x - col.width / 2, pos.p.y - col.height / 2, col.width,
+                  col.height};
+          if (e != entity)
+            if (collide(r1, r2)) {
+              r.color = glm::vec3{1.0f, 0.0f, 0.0f};
+              vel.dvec.x = 0.0f;
+              vel.dvec.y = 0.0f;
+              // vel.friction = 1.0f;
+            }
+        });
+  });
 }
 
 }  // namespace jam
@@ -137,13 +139,17 @@ void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
   jam::Random r{2.0f, 50.0f};
   jam::Random rv{-8.0f, 8.0f};
-  for (int i = 0; i < 2; ++i) {
+  jam::Random rc{0.0f, 1.0f};
+  jam::Random rwidth{0.0f, window.width()};
+  jam::Random rheight{0.0f, window.height()};
+  for (int i = 0; i < 5; ++i) {
     auto entity1 = reg.create();
     float width = r();
     float height = r();
-    reg.assign<jam::component::Position>(
-        entity1, glm::vec3{window.width() / 2, window.height() / 2, 0.0f});
-    reg.assign<jam::component::Renderable>(entity1, model, width, height);
+    reg.assign<jam::component::Position>(entity1,
+                                         glm::vec3{rwidth(), rheight(), 0.0f});
+    reg.assign<jam::component::Renderable>(entity1, model, width, height,
+                                           glm::vec3{rc(), rc(), rc()});
     reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), -rv(), 0.0f},
                                          0.99f);
     reg.assign<jam::component::Acceleration>(entity1,
