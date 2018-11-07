@@ -60,7 +60,10 @@ void acceleration(registry& reg) {
 void move(registry& reg) {
   using namespace jam::component;
   reg.view<Position, Velocity>().each(
-      [&](auto entity, Position& pos, Velocity& vel) { pos.p += vel.dvec; });
+      [&](auto entity, Position& pos, Velocity& vel) {
+        pos.p += vel.dvec;
+        vel.dvec *= vel.friction;
+      });
 }
 
 void collision(registry& reg, Window& window) {
@@ -100,7 +103,8 @@ void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
     reg.assign<jam::component::Position>(
         entity1, glm::vec3{window.width() / 2, window.height() / 2, 0.0f});
     reg.assign<jam::component::Renderable>(entity1, model, width, height);
-    reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), -rv(), 0.0f});
+    reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), -rv(), 0.0f},
+                                         0.99f);
     reg.assign<jam::component::Acceleration>(entity1,
                                              glm::vec3{0.0f, 0.13f, 0.0f});
     reg.assign<jam::component::Collision>(entity1, width, height);
