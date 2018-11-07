@@ -3,7 +3,10 @@
 
 namespace jam {
 namespace component {
-struct Collision {};
+struct Collision {
+  float width;
+  float height;
+};
 }  // namespace component
 
 }  // namespace jam

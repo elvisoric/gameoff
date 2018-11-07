@@ -7,6 +7,7 @@ namespace jam {
 namespace component {
 struct Velocity {
   glm::vec3 dvec;
+  float friction;
 };
 }  // namespace component
 }  // namespace jam

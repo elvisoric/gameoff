@@ -7,6 +7,8 @@ namespace jam {
 namespace component {
 struct Renderable {
   RawModel model;
+  float scaleX;
+  float scaleY;
 };
 }  // namespace component
 }  // namespace jam
