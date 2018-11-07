@@ -25,6 +25,34 @@ using namespace std::chrono_literals;
 namespace jam {
 using registry = entt::registry<uint32_t>;
 
+struct Rect {
+  float x, y, width, height;
+};
+
+bool inRange(float value, float min, float max) {
+  return value >= min && value <= max;
+}
+
+bool pointInRect(float x, float y, const component::Position& pos,
+                 const component::Collision& col) {
+  Rect r;
+  r.x = pos.p.x;
+  r.y = pos.p.y;
+  r.width = col.width;
+  r.height = col.height;
+  return inRange(x, r.x, r.x + r.width) && inRange(y, r.y, r.y + r.height);
+}
+
+bool rangeInersect(float min0, float max0, float min1, float max1) {
+  return std::max(min0, max0) >= std::min(min1, max1) &&
+         std::min(min0, max0) <= std::max(min1, max1);
+}
+
+bool collide(const jam::Rect& r1, const jam::Rect& r2) {
+  return rangeInersect(r1.x, r1.x + r1.width, r2.x, r2.x + r2.width) &&
+         rangeInersect(r1.y, r1.y + r1.height, r2.y, r2.y + r2.height);
+}
+
 struct Random {
   Random(float from, float to) : mt{rd()}, dist{from, to} {}
   float operator()() { return dist(mt); }
@@ -86,6 +114,19 @@ void collision(registry& reg, Window& window) {
           vel.dvec.y = 0.0f;
           // vel.dvec.y *= -1;
         }
+
+        if (pointInRect(window.width() / 2, window.height(), pos, col)) {
+          std::cout << "point in Rect " << std::endl;
+        }
+        reg.view<Position, Collision>().each(
+            [&](auto e, Position& p, Collision& c) {
+              Rect r1{p.p.x, p.p.y, c.width, c.height};
+              Rect r2{pos.p.x, pos.p.y, col.width, col.height};
+              if (e != entity)
+                if (collide(r1, r2)) {
+                  std::cout << "collideeee" << std::endl;
+                }
+            });
       });
 }
 
@@ -96,7 +137,7 @@ void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
   jam::Random r{2.0f, 50.0f};
   jam::Random rv{-8.0f, 8.0f};
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 2; ++i) {
     auto entity1 = reg.create();
     float width = r();
     float height = r();
