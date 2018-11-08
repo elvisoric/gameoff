@@ -20,10 +20,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <random>
 
+#include <behavioral/observer.hpp>
+#include <creational/singleton.hpp>
+
 using namespace std::chrono_literals;
 
 namespace jam {
 using registry = entt::registry<uint32_t>;
+
+using CursorSubject = patterns::behavioral::Subject<float, float>;
+using CursorSingleton = patterns::creational::Singleton<CursorSubject>;
 
 struct Rect {
   float x, y, width, height;
@@ -100,18 +106,18 @@ void collision(registry& reg, Window& window) {
   reg.view<Position, Velocity, Collision>().each([&](auto entity, Position& pos,
                                                      Velocity& vel,
                                                      Collision& col) {
-    if (pos.p.x - col.width <= 0.0f) {
-      pos.p.x = col.width;
+    if (pos.p.x - col.width / 2 <= 0.0f) {
+      pos.p.x = col.width / 2;
       vel.dvec.x *= -1;
-    } else if (pos.p.x + col.width >= window.width()) {
-      pos.p.x = window.width() - col.width;
+    } else if (pos.p.x + col.width / 2 >= window.width()) {
+      pos.p.x = window.width() - col.width / 2;
       vel.dvec.x *= -1;
     }
-    if (pos.p.y - col.height <= 0.0f) {
-      pos.p.y = col.height;
+    if (pos.p.y - col.height / 2 <= 0.0f) {
+      pos.p.y = col.height / 2;
       vel.dvec.y *= -1;
-    } else if (pos.p.y + col.height >= window.height()) {
-      pos.p.y = window.height() - col.height;
+    } else if (pos.p.y + col.height / 2 >= window.height()) {
+      pos.p.y = window.height() - col.height / 2;
       vel.dvec.x = 0.0f;
       vel.dvec.y = 0.0f;
     }
@@ -127,6 +133,8 @@ void collision(registry& reg, Window& window) {
               vel.dvec.x = 0.0f;
               vel.dvec.y = 0.0f;
               // vel.friction = 1.0f;
+            } else {
+              r.color = glm::vec3{1.0f, 0.7f, 0.8f};
             }
         });
   });
@@ -157,11 +165,39 @@ void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
     reg.assign<jam::component::Collision>(entity1, width, height);
   }
 }
+
+jam::registry::entity_type makeFirstEntity(jam::registry& reg,
+                                           jam::Loader& loader) {
+  auto model = jam::factory::rectangle(loader);
+  jam::Random r{2.0f, 50.0f};
+  jam::Random rv{-8.0f, 8.0f};
+  jam::Random rc{0.0f, 1.0f};
+  jam::Random rwidth{0.0f, 300.0f};
+  jam::Random rheight{0.0f, 250.0f};
+  auto entity = reg.create();
+  float width = 100.0f;
+  float height = 100.0f;
+  reg.assign<jam::component::Position>(entity,
+                                       glm::vec3{rwidth(), rheight(), 0.0f});
+  reg.assign<jam::component::Renderable>(entity, model, width / 2, height / 2,
+                                         glm::vec3{rc(), rc(), rc()});
+  reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 1.0f);
+  // reg.assign<jam::component::Acceleration>(entity,
+  //                                          glm::vec3{0.0f, 0.13f, 0.0f});
+  reg.assign<jam::component::Collision>(entity, width, height);
+  return entity;
+}
 }  // namespace
+
+static void cursor_position_callback(GLFWwindow* window, double xpos,
+                                     double ypos) {
+  jam::CursorSingleton::instance().notify(xpos, ypos);
+}
 
 int main() {
   using clock = std::chrono::high_resolution_clock;
   auto window = jam::createWindow(1024.0f, 768.0f);
+  glfwSetCursorPosCallback(window.window(), cursor_position_callback);
 
   jam::shader::BasicShader shader;
   jam::Renderer renderer;
@@ -171,7 +207,16 @@ int main() {
       glm::ortho(0.0f, window.width(), window.height(), 0.0f, -1.0f, 1.0f);
 
   jam::registry reg;
-  prepare(window, reg, loader);
+  auto entityCursor = makeFirstEntity(reg, loader);
+  makeFirstEntity(reg, loader);
+
+  auto& pos = reg.get<jam::component::Position>(entityCursor);
+
+  auto sub = [&](const float& x, const float& y) {
+    pos.p.x = x;
+    pos.p.y = y;
+  };
+  jam::CursorSingleton::instance().attach(sub);
 
   std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 70;
   while (!window.shouldClose()) {
