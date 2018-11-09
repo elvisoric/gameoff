@@ -127,15 +127,18 @@ void collision(registry& reg, Window& window) {
           Rect r1{p.p.x - c.width / 2, p.p.y - c.height / 2, c.width, c.height};
           Rect r2{pos.p.x - col.width / 2, pos.p.y - col.height / 2, col.width,
                   col.height};
-          if (e != entity)
+          if (e != entity) {
             if (collide(r1, r2)) {
               r.color = glm::vec3{1.0f, 0.0f, 0.0f};
               vel.dvec.x = 0.0f;
               vel.dvec.y = 0.0f;
-              // vel.friction = 1.0f;
-            } else {
-              r.color = glm::vec3{1.0f, 0.7f, 0.8f};
+              vel.friction = 1.0f;
+              if (reg.has<Acceleration>(entity)) {
+                auto& a = reg.get<Acceleration>(entity);
+                a.vec = glm::vec3{0.0f};
+              }
             }
+          }
         });
   });
 }
@@ -143,61 +146,60 @@ void collision(registry& reg, Window& window) {
 }  // namespace jam
 
 namespace {
-void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
+// void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
+//   auto model = jam::factory::rectangle(loader);
+//   jam::Random r{2.0f, 50.0f};
+//   jam::Random rv{-8.0f, 8.0f};
+//   jam::Random rc{0.0f, 1.0f};
+//   jam::Random rwidth{0.0f, window.width()};
+//   jam::Random rheight{0.0f, window.height()};
+//   for (int i = 0; i < 5; ++i) {
+//     auto entity1 = reg.create();
+//     float width = r();
+//     float height = r();
+//     reg.assign<jam::component::Position>(entity1,
+//                                          glm::vec3{rwidth(), rheight(),
+//                                          0.0f});
+//     reg.assign<jam::component::Renderable>(entity1, model, width, height,
+//                                            glm::vec3{rc(), rc(), rc()});
+//     reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), -rv(),
+//     0.0f},
+//                                          0.99f);
+//     reg.assign<jam::component::Acceleration>(entity1,
+//                                              glm::vec3{0.0f, 0.13f, 0.0f});
+//     reg.assign<jam::component::Collision>(entity1, width, height);
+//   }
+// }
+
+void entities(jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
   jam::Random r{2.0f, 50.0f};
   jam::Random rv{-8.0f, 8.0f};
   jam::Random rc{0.0f, 1.0f};
-  jam::Random rwidth{0.0f, window.width()};
-  jam::Random rheight{0.0f, window.height()};
-  for (int i = 0; i < 5; ++i) {
-    auto entity1 = reg.create();
-    float width = r();
-    float height = r();
-    reg.assign<jam::component::Position>(entity1,
-                                         glm::vec3{rwidth(), rheight(), 0.0f});
-    reg.assign<jam::component::Renderable>(entity1, model, width, height,
+  jam::Random rwidth{30.0f, 100.0f};
+  jam::Random rheight{50.0f, 100.0f};
+  jam::Random pwidth{0.0f, 1000.0f};
+  jam::Random pheight{0.0f, 800.0f};
+  for (int i = 0; i < 20; ++i) {
+    auto entity = reg.create();
+    float width = rwidth();
+    float height = rheight();
+    reg.assign<jam::component::Position>(entity,
+                                         glm::vec3{pwidth(), pheight(), 0.0f});
+    reg.assign<jam::component::Renderable>(entity, model, width / 2, height / 2,
                                            glm::vec3{rc(), rc(), rc()});
-    reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), -rv(), 0.0f},
-                                         0.99f);
-    reg.assign<jam::component::Acceleration>(entity1,
+    reg.assign<jam::component::Velocity>(entity, glm::vec3{rv(), -rv(), 0.0f},
+                                         1.0f);
+    reg.assign<jam::component::Acceleration>(entity,
                                              glm::vec3{0.0f, 0.13f, 0.0f});
-    reg.assign<jam::component::Collision>(entity1, width, height);
+    reg.assign<jam::component::Collision>(entity, width, height);
   }
 }
-
-jam::registry::entity_type makeFirstEntity(jam::registry& reg,
-                                           jam::Loader& loader) {
-  auto model = jam::factory::rectangle(loader);
-  jam::Random r{2.0f, 50.0f};
-  jam::Random rv{-8.0f, 8.0f};
-  jam::Random rc{0.0f, 1.0f};
-  jam::Random rwidth{0.0f, 300.0f};
-  jam::Random rheight{0.0f, 250.0f};
-  auto entity = reg.create();
-  float width = 100.0f;
-  float height = 100.0f;
-  reg.assign<jam::component::Position>(entity,
-                                       glm::vec3{rwidth(), rheight(), 0.0f});
-  reg.assign<jam::component::Renderable>(entity, model, width / 2, height / 2,
-                                         glm::vec3{rc(), rc(), rc()});
-  reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 1.0f);
-  // reg.assign<jam::component::Acceleration>(entity,
-  //                                          glm::vec3{0.0f, 0.13f, 0.0f});
-  reg.assign<jam::component::Collision>(entity, width, height);
-  return entity;
-}
 }  // namespace
-
-static void cursor_position_callback(GLFWwindow* window, double xpos,
-                                     double ypos) {
-  jam::CursorSingleton::instance().notify(xpos, ypos);
-}
 
 int main() {
   using clock = std::chrono::high_resolution_clock;
   auto window = jam::createWindow(1024.0f, 768.0f);
-  glfwSetCursorPosCallback(window.window(), cursor_position_callback);
 
   jam::shader::BasicShader shader;
   jam::Renderer renderer;
@@ -207,16 +209,8 @@ int main() {
       glm::ortho(0.0f, window.width(), window.height(), 0.0f, -1.0f, 1.0f);
 
   jam::registry reg;
-  auto entityCursor = makeFirstEntity(reg, loader);
-  makeFirstEntity(reg, loader);
-
-  auto& pos = reg.get<jam::component::Position>(entityCursor);
-
-  auto sub = [&](const float& x, const float& y) {
-    pos.p.x = x;
-    pos.p.y = y;
-  };
-  jam::CursorSingleton::instance().attach(sub);
+  entities(reg, loader);
+  // prepare(window, reg, loader);
 
   std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 70;
   while (!window.shouldClose()) {
