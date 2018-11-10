@@ -22,6 +22,7 @@
 
 #include <behavioral/observer.hpp>
 #include <creational/singleton.hpp>
+#include <util/util.hpp>
 
 using namespace std::chrono_literals;
 
@@ -30,42 +31,6 @@ using registry = entt::registry<uint32_t>;
 
 using CursorSubject = patterns::behavioral::Subject<float, float>;
 using CursorSingleton = patterns::creational::Singleton<CursorSubject>;
-
-struct Rect {
-  float x, y, width, height;
-};
-
-bool inRange(float value, float min, float max) {
-  return value >= min && value <= max;
-}
-
-bool pointInRect(float x, float y, const component::Position& pos,
-                 const component::Collision& col) {
-  Rect r;
-  r.x = pos.p.x;
-  r.y = pos.p.y;
-  r.width = col.width;
-  r.height = col.height;
-  return inRange(x, r.x, r.x + r.width) && inRange(y, r.y, r.y + r.height);
-}
-
-bool rangeInersect(float min0, float max0, float min1, float max1) {
-  return std::max(min0, max0) >= std::min(min1, max1) &&
-         std::min(min0, max0) <= std::max(min1, max1);
-}
-
-bool collide(const jam::Rect& r1, const jam::Rect& r2) {
-  return rangeInersect(r1.x, r1.x + r1.width, r2.x, r2.x + r2.width) &&
-         rangeInersect(r1.y, r1.y + r1.height, r2.y, r2.y + r2.height);
-}
-
-struct Random {
-  Random(float from, float to) : mt{rd()}, dist{from, to} {}
-  float operator()() { return dist(mt); }
-  std::random_device rd;
-  std::mt19937 mt;
-  std::uniform_real_distribution<float> dist;
-};
 
 void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
             glm::mat4& projection) {
@@ -128,7 +93,7 @@ void collision(registry& reg, Window& window) {
           Rect r2{pos.p.x - col.width / 2, pos.p.y - col.height / 2, col.width,
                   col.height};
           if (e != entity) {
-            if (collide(r1, r2)) {
+            if (jam::util::collide(r1, r2)) {
               r.color = glm::vec3{1.0f, 0.0f, 0.0f};
               vel.dvec.x = 0.0f;
               vel.dvec.y = 0.0f;
@@ -146,40 +111,16 @@ void collision(registry& reg, Window& window) {
 }  // namespace jam
 
 namespace {
-// void prepare(jam::Window& window, jam::registry& reg, jam::Loader& loader) {
-//   auto model = jam::factory::rectangle(loader);
-//   jam::Random r{2.0f, 50.0f};
-//   jam::Random rv{-8.0f, 8.0f};
-//   jam::Random rc{0.0f, 1.0f};
-//   jam::Random rwidth{0.0f, window.width()};
-//   jam::Random rheight{0.0f, window.height()};
-//   for (int i = 0; i < 5; ++i) {
-//     auto entity1 = reg.create();
-//     float width = r();
-//     float height = r();
-//     reg.assign<jam::component::Position>(entity1,
-//                                          glm::vec3{rwidth(), rheight(),
-//                                          0.0f});
-//     reg.assign<jam::component::Renderable>(entity1, model, width, height,
-//                                            glm::vec3{rc(), rc(), rc()});
-//     reg.assign<jam::component::Velocity>(entity1, glm::vec3{rv(), -rv(),
-//     0.0f},
-//                                          0.99f);
-//     reg.assign<jam::component::Acceleration>(entity1,
-//                                              glm::vec3{0.0f, 0.13f, 0.0f});
-//     reg.assign<jam::component::Collision>(entity1, width, height);
-//   }
-// }
 
 void entities(jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
-  jam::Random r{2.0f, 50.0f};
-  jam::Random rv{-8.0f, 8.0f};
-  jam::Random rc{0.0f, 1.0f};
-  jam::Random rwidth{30.0f, 100.0f};
-  jam::Random rheight{50.0f, 100.0f};
-  jam::Random pwidth{0.0f, 1000.0f};
-  jam::Random pheight{0.0f, 800.0f};
+  jam::util::Random r{2.0f, 50.0f};
+  jam::util::Random rv{-8.0f, 8.0f};
+  jam::util::Random rc{0.0f, 1.0f};
+  jam::util::Random rwidth{30.0f, 100.0f};
+  jam::util::Random rheight{50.0f, 100.0f};
+  jam::util::Random pwidth{0.0f, 1000.0f};
+  jam::util::Random pheight{0.0f, 800.0f};
   for (int i = 0; i < 20; ++i) {
     auto entity = reg.create();
     float width = rwidth();
@@ -210,7 +151,6 @@ int main() {
 
   jam::registry reg;
   entities(reg, loader);
-  // prepare(window, reg, loader);
 
   std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 70;
   while (!window.shouldClose()) {
