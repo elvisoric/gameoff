@@ -72,6 +72,10 @@ void spring(registry& reg) {
   reg.view<Spring, Position, Velocity>().each(
       [&](auto entity, Spring& s, Position& p, Velocity& v) {
         auto distance = s.point - p.p;
+        auto distanceNormal = glm::normalize(distance);
+        auto length = glm::length(distance);
+        auto finalLength = length - s.length;
+        distance = finalLength * distanceNormal;
         auto force = s.k * distance;
         v.dvec += force;
       });
@@ -137,12 +141,14 @@ std::tuple<jam::registry::entity_type, jam::registry::entity_type> springEntity(
   float width = rwidth();
   float height = rheight();
   auto pos = glm::vec3{pwidth(), pheight(), 0.0f};
+
   reg.assign<jam::component::Position>(entity, pos);
   reg.assign<jam::component::Renderable>(entity, model, width / 2, height / 2,
                                          glm::vec3{rc(), rc(), rc()});
-  reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 0.97f);
-  auto sp = glm::vec3{pos.x - 200.0f, pos.y - 100.0f, 0.0f};
-  reg.assign<jam::component::Spring>(entity, sp, 0.03f);
+  reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 0.91f);
+  reg.assign<jam::component::Acceleration>(entity, glm::vec3{0.0f, 0.3f, 0.0f});
+  auto sp = glm::vec3{pos.x - 250.0f, pos.y - 250.0f, 0.0f};
+  reg.assign<jam::component::Spring>(entity, sp, 0.03f, 100.0f);
 
   auto spEntity = reg.create();
   reg.assign<jam::component::Position>(spEntity, sp);
