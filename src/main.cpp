@@ -15,6 +15,7 @@
 #include <components/collision.hpp>
 #include <components/position.hpp>
 #include <components/renderable.hpp>
+#include <components/spring.hpp>
 #include <components/velocity.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -66,6 +67,16 @@ void move(registry& reg) {
       });
 }
 
+void spring(registry& reg) {
+  using namespace jam::component;
+  reg.view<Spring, Position, Velocity>().each(
+      [&](auto entity, Spring& s, Position& p, Velocity& v) {
+        auto distance = s.point - p.p;
+        auto force = s.k * distance;
+        v.dvec += force;
+      });
+}
+
 void collision(registry& reg, Window& window) {
   using namespace jam::component;
   reg.view<Position, Velocity, Collision>().each([&](auto entity, Position& pos,
@@ -112,6 +123,32 @@ void collision(registry& reg, Window& window) {
 
 namespace {
 
+void springEntity(jam::registry& reg, jam::Loader& loader) {
+  auto model = jam::factory::rectangle(loader);
+  jam::util::Random r{2.0f, 50.0f};
+  jam::util::Random rv{-8.0f, 8.0f};
+  jam::util::Random rc{0.0f, 1.0f};
+  jam::util::Random rwidth{20.0f, 30.0f};
+  jam::util::Random rheight{20.0f, 30.0f};
+  jam::util::Random pwidth{500.0f, 1000.0f};
+  jam::util::Random pheight{500.0f, 800.0f};
+  auto entity = reg.create();
+  float width = rwidth();
+  float height = rheight();
+  auto pos = glm::vec3{pwidth(), pheight(), 0.0f};
+  reg.assign<jam::component::Position>(entity, pos);
+  reg.assign<jam::component::Renderable>(entity, model, width / 2, height / 2,
+                                         glm::vec3{rc(), rc(), rc()});
+  reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 1.0f);
+  auto sp = glm::vec3{pos.x - 200.0f, pos.y - 100.0f, 0.0f};
+  reg.assign<jam::component::Spring>(entity, sp, 0.02f);
+
+  auto spEntity = reg.create();
+  reg.assign<jam::component::Position>(spEntity, sp);
+  reg.assign<jam::component::Renderable>(spEntity, model, 5.0f, 5.0f,
+                                         glm::vec3{0.0f});
+}
+
 void entities(jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
   jam::util::Random r{2.0f, 50.0f};
@@ -150,14 +187,16 @@ int main() {
       glm::ortho(0.0f, window.width(), window.height(), 0.0f, -1.0f, 1.0f);
 
   jam::registry reg;
-  entities(reg, loader);
+  // entities(reg, loader);
+  springEntity(reg, loader);
 
-  std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 70;
+  std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 60;
   while (!window.shouldClose()) {
     auto start = clock::now();
     renderer.newFrame();
     jam::acceleration(reg);
     jam::move(reg);
+    jam::spring(reg);
     jam::collision(reg, window);
     jam::render(reg, renderer, shader, projection);
 
