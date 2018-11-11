@@ -123,13 +123,14 @@ void collision(registry& reg, Window& window) {
 
 namespace {
 
-void springEntity(jam::registry& reg, jam::Loader& loader) {
+std::tuple<jam::registry::entity_type, jam::registry::entity_type> springEntity(
+    jam::registry& reg, jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
   jam::util::Random r{2.0f, 50.0f};
   jam::util::Random rv{-8.0f, 8.0f};
   jam::util::Random rc{0.0f, 1.0f};
-  jam::util::Random rwidth{20.0f, 30.0f};
-  jam::util::Random rheight{20.0f, 30.0f};
+  jam::util::Random rwidth{40.0f, 50.0f};
+  jam::util::Random rheight{40.0f, 50.0f};
   jam::util::Random pwidth{500.0f, 1000.0f};
   jam::util::Random pheight{500.0f, 800.0f};
   auto entity = reg.create();
@@ -139,14 +140,15 @@ void springEntity(jam::registry& reg, jam::Loader& loader) {
   reg.assign<jam::component::Position>(entity, pos);
   reg.assign<jam::component::Renderable>(entity, model, width / 2, height / 2,
                                          glm::vec3{rc(), rc(), rc()});
-  reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 1.0f);
+  reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 0.97f);
   auto sp = glm::vec3{pos.x - 200.0f, pos.y - 100.0f, 0.0f};
-  reg.assign<jam::component::Spring>(entity, sp, 0.02f);
+  reg.assign<jam::component::Spring>(entity, sp, 0.03f);
 
   auto spEntity = reg.create();
   reg.assign<jam::component::Position>(spEntity, sp);
   reg.assign<jam::component::Renderable>(spEntity, model, 5.0f, 5.0f,
                                          glm::vec3{0.0f});
+  return {entity, spEntity};
 }
 
 void entities(jam::registry& reg, jam::Loader& loader) {
@@ -175,9 +177,14 @@ void entities(jam::registry& reg, jam::Loader& loader) {
 }
 }  // namespace
 
+void cursor_callback(GLFWwindow* window, double x, double y) {
+  jam::CursorSingleton::instance().notify(x, y);
+}
+
 int main() {
   using clock = std::chrono::high_resolution_clock;
   auto window = jam::createWindow(1024.0f, 768.0f);
+  glfwSetCursorPosCallback(window.window(), cursor_callback);
 
   jam::shader::BasicShader shader;
   jam::Renderer renderer;
@@ -188,7 +195,16 @@ int main() {
 
   jam::registry reg;
   // entities(reg, loader);
-  springEntity(reg, loader);
+  auto tup = springEntity(reg, loader);
+  auto& s = reg.get<jam::component::Spring>(std::get<0>(tup));
+  auto& sp = reg.get<jam::component::Position>(std::get<1>(tup));
+  auto updateSp = [&](const float& x, const float& y) {
+    s.point.x = x;
+    s.point.y = y;
+    sp.p.x = x;
+    sp.p.y = y;
+  };
+  jam::CursorSingleton::instance().attach(updateSp);
 
   std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 60;
   while (!window.shouldClose()) {
