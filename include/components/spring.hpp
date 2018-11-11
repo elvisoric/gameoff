@@ -6,7 +6,7 @@
 namespace jam {
 namespace component {
 struct Spring {
-  glm::vec3 point;
+  uint32_t other;
   float k;
   float length;
 };

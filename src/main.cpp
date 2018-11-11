@@ -69,15 +69,19 @@ void move(registry& reg) {
 
 void spring(registry& reg) {
   using namespace jam::component;
+
   reg.view<Spring, Position, Velocity>().each(
       [&](auto entity, Spring& s, Position& p, Velocity& v) {
-        auto distance = s.point - p.p;
-        auto distanceNormal = glm::normalize(distance);
-        auto length = glm::length(distance);
-        auto finalLength = length - s.length;
-        distance = finalLength * distanceNormal;
-        auto force = s.k * distance;
-        v.dvec += force;
+        if (reg.has<Position>(s.other)) {
+          auto& otherPos = reg.get<Position>(s.other);
+          auto distance = otherPos.p - p.p;
+          auto distanceNormal = glm::normalize(distance);
+          auto length = glm::length(distance);
+          auto finalLength = length - s.length;
+          distance = finalLength * distanceNormal;
+          auto force = s.k * distance;
+          v.dvec += force;
+        }
       });
 }
 
@@ -127,8 +131,44 @@ void collision(registry& reg, Window& window) {
 
 namespace {
 
-std::tuple<jam::registry::entity_type, jam::registry::entity_type> springEntity(
-    jam::registry& reg, jam::Loader& loader) {
+void twoEntitiesSpring(jam::registry& reg, jam::Loader& loader) {
+  auto model = jam::factory::rectangle(loader);
+  jam::util::Random r{2.0f, 50.0f};
+  jam::util::Random rv{-8.0f, 8.0f};
+  jam::util::Random rc{0.0f, 1.0f};
+  jam::util::Random rwidth{40.0f, 50.0f};
+  jam::util::Random rheight{40.0f, 50.0f};
+  jam::util::Random pwidth{400.0f, 800.0f};
+  jam::util::Random pheight{200.0f, 700.0f};
+  auto entity1 = reg.create();
+  float width = rwidth();
+  float height = rheight();
+  auto pos = glm::vec3{pwidth(), pheight(), 0.0f};
+
+  reg.assign<jam::component::Position>(entity1, pos);
+  reg.assign<jam::component::Renderable>(entity1, model, width / 2, height / 2,
+                                         glm::vec3{rc(), rc(), rc()});
+  reg.assign<jam::component::Velocity>(entity1, glm::vec3{0.0f}, 0.9f);
+
+  auto entity2 = reg.create();
+  float width2 = rwidth();
+  float height2 = rheight();
+  auto pos2 = glm::vec3{pwidth(), pheight(), 0.0f};
+
+  reg.assign<jam::component::Position>(entity2, pos2);
+  reg.assign<jam::component::Renderable>(
+      entity2, model, width2 / 2, height2 / 2, glm::vec3{rc(), rc(), rc()});
+  reg.assign<jam::component::Velocity>(entity2, glm::vec3{0.0f}, 0.9f);
+
+  // spring entities
+  auto k = 0.1f;
+  auto length = 200.0f;
+  reg.assign<jam::component::Spring>(entity1, entity2, k, length);
+  reg.assign<jam::component::Spring>(entity2, entity1, k, length);
+}
+
+jam::registry::entity_type springEntity(jam::registry& reg,
+                                        jam::Loader& loader) {
   auto model = jam::factory::rectangle(loader);
   jam::util::Random r{2.0f, 50.0f};
   jam::util::Random rv{-8.0f, 8.0f};
@@ -147,14 +187,16 @@ std::tuple<jam::registry::entity_type, jam::registry::entity_type> springEntity(
                                          glm::vec3{rc(), rc(), rc()});
   reg.assign<jam::component::Velocity>(entity, glm::vec3{0.0f}, 0.91f);
   reg.assign<jam::component::Acceleration>(entity, glm::vec3{0.0f, 0.3f, 0.0f});
-  auto sp = glm::vec3{pos.x - 250.0f, pos.y - 250.0f, 0.0f};
-  reg.assign<jam::component::Spring>(entity, sp, 0.03f, 100.0f);
 
-  auto spEntity = reg.create();
-  reg.assign<jam::component::Position>(spEntity, sp);
-  reg.assign<jam::component::Renderable>(spEntity, model, 5.0f, 5.0f,
+  auto sp = glm::vec3{pos.x - 250.0f, pos.y - 250.0f, 0.0f};
+
+  auto springPoint = reg.create();
+  reg.assign<jam::component::Position>(springPoint, sp);
+  reg.assign<jam::component::Renderable>(springPoint, model, 5.0f, 5.0f,
                                          glm::vec3{0.0f});
-  return {entity, spEntity};
+
+  reg.assign<jam::component::Spring>(entity, springPoint, 0.03f, 100.0f);
+  return springPoint;
 }
 
 void entities(jam::registry& reg, jam::Loader& loader) {
@@ -201,16 +243,16 @@ int main() {
 
   jam::registry reg;
   // entities(reg, loader);
-  auto tup = springEntity(reg, loader);
-  auto& s = reg.get<jam::component::Spring>(std::get<0>(tup));
-  auto& sp = reg.get<jam::component::Position>(std::get<1>(tup));
+  auto springPoint = springEntity(reg, loader);
   auto updateSp = [&](const float& x, const float& y) {
-    s.point.x = x;
-    s.point.y = y;
+    auto& sp = reg.get<jam::component::Position>(springPoint);
     sp.p.x = x;
     sp.p.y = y;
   };
+
   jam::CursorSingleton::instance().attach(updateSp);
+
+  twoEntitiesSpring(reg, loader);
 
   std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 60;
   while (!window.shouldClose()) {
