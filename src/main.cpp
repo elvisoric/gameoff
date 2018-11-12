@@ -32,12 +32,45 @@ using registry = entt::registry<uint32_t>;
 
 using CursorSubject = patterns::behavioral::Subject<float, float>;
 using CursorSingleton = patterns::creational::Singleton<CursorSubject>;
+using CursorClickSubject = patterns::behavioral::Subject<int>;
+using CursorClickSingleton =
+    patterns::creational::Singleton<CursorClickSubject>;
+
+struct Camera {
+  Camera(jam::registry& reg, float x, float y) : registry{reg} {
+    cameraEntity = reg.create();
+    reg.assign<jam::component::Position>(cameraEntity, glm::vec3{1.0f});
+    reg.assign<jam::component::Velocity>(cameraEntity, glm::vec3{0.0f}, 0.9f);
+
+    springPoint = reg.create();
+    reg.assign<jam::component::Position>(springPoint,
+                                         glm::vec3{1.0f, 1.0f, 0.0f});
+
+    reg.assign<jam::component::Spring>(cameraEntity, springPoint, 0.3f, 0.1f);
+  }
+
+  glm::mat4 view() const {
+    glm::mat4 v{1.0f};
+    jam::component::Position& pos =
+        registry.get<jam::component::Position>(cameraEntity);
+    v = glm::translate(v, pos.p);
+    return v;
+  }
+
+  jam::registry::entity_type spring() const { return springPoint; }
+  jam::registry::entity_type entity() const { return cameraEntity; }
+
+  jam::registry& registry;
+  jam::registry::entity_type cameraEntity;
+  jam::registry::entity_type springPoint;
+};
 
 void render(registry& reg, Renderer& renderer, shader::BasicShader& shader,
-            glm::mat4& projection) {
+            glm::mat4& projection, Camera& camera) {
   using namespace jam::component;
   shader.start();
   shader.loadProjection(projection);
+  shader.loadView(camera.view());
   reg.view<Renderable, Position>().each(
       [&](auto entity, Renderable& rend, Position& pos) {
         glm::mat4 trans{1.0f};
@@ -229,10 +262,17 @@ void cursor_callback(GLFWwindow* window, double x, double y) {
   jam::CursorSingleton::instance().notify(x, y);
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action,
+                           int mods) {
+  if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    jam::CursorClickSingleton::instance().notify(1);
+}
+
 int main() {
   using clock = std::chrono::high_resolution_clock;
   auto window = jam::createWindow(1024.0f, 768.0f);
   glfwSetCursorPosCallback(window.window(), cursor_callback);
+  glfwSetMouseButtonCallback(window.window(), mouse_button_callback);
 
   jam::shader::BasicShader shader;
   jam::Renderer renderer;
@@ -242,7 +282,7 @@ int main() {
       glm::ortho(0.0f, window.width(), window.height(), 0.0f, -1.0f, 1.0f);
 
   jam::registry reg;
-  // entities(reg, loader);
+  entities(reg, loader);
   auto springPoint = springEntity(reg, loader);
   auto updateSp = [&](const float& x, const float& y) {
     auto& sp = reg.get<jam::component::Position>(springPoint);
@@ -254,6 +294,18 @@ int main() {
 
   twoEntitiesSpring(reg, loader);
 
+  jam::Camera camera{reg, window.width() / 2, window.height() / 2};
+  jam::util::Random r{-30.0f, 30.0f};
+
+  auto moveCameraSpring = [&](const int&) {
+    jam::component::Position& pos =
+        reg.get<jam::component::Position>(camera.entity());
+    pos.p.x += r();
+    pos.p.y += r();
+  };
+
+  jam::CursorClickSingleton::instance().attach(moveCameraSpring);
+
   std::chrono::nanoseconds perFrame = std::chrono::milliseconds{1000} / 60;
   while (!window.shouldClose()) {
     auto start = clock::now();
@@ -262,7 +314,7 @@ int main() {
     jam::move(reg);
     jam::spring(reg);
     jam::collision(reg, window);
-    jam::render(reg, renderer, shader, projection);
+    jam::render(reg, renderer, shader, projection, camera);
 
     window.pollEvents();
     window.swapBuffers();
