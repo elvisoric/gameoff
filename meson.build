@@ -14,4 +14,7 @@ srcs = [
 entt_sp = subproject('entt')
 entt_dep = entt_sp.get_variable('entt_dep')
 
-executable('Game', srcs, include_directories:incdir, dependencies:[entt_dep, glfw_dep])
+patterns_sp = subproject('patterns')
+patterns_dep = patterns_sp.get_variable('patterns_dep')
+
+executable('Game', srcs, include_directories:incdir, dependencies:[entt_dep, glfw_dep, patterns_dep])

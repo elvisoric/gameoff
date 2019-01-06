@@ -16,13 +16,23 @@ class BasicShader : public Program {
     loadUniform(modelLocation_, model);
   }
 
+  inline void loadView(const glm::mat4& view) const {
+    loadUniform(viewLocation_, view);
+  }
+
   inline void loadProjection(const glm::mat4& proj) const {
     loadUniform(projectionLocation_, proj);
   }
 
+  inline void color(const glm::vec3& c) const {
+    loadUniform(colorLocation_, c);
+  }
+
   void getAllUniformLocations() override {
     modelLocation_ = getUniformLocation("model");
+    viewLocation_ = getUniformLocation("view");
     projectionLocation_ = getUniformLocation("projection");
+    colorLocation_ = getUniformLocation("color");
   }
 
  protected:
@@ -34,7 +44,9 @@ class BasicShader : public Program {
 
  private:
   unsigned int modelLocation_;
+  unsigned int viewLocation_;
   unsigned int projectionLocation_;
+  unsigned int colorLocation_;
 };
 }  // namespace shader
 }  // namespace jam
