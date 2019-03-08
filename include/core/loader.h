@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "raw_model.hpp"
+#include <string>
 
 // TODO: move code to functions, there is no need for class
 
